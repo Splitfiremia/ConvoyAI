@@ -1,0 +1,22 @@
+convoai/
+├── server/
+│   ├── ai-service.js       # Core AI processing
+│   ├── routes/
+│   │   ├── personality.js  # Personality endpoints
+│   │   ├── avatar.js       # Video avatar
+│   │   └── analytics.js    # Analytics
+│   └── server.js           # Main backend
+│
+├── src/
+│   ├── components/
+│   │   ├── ChatInterface.js
+│   │   ├── PersonalityEditor.js
+│   │   ├── AvatarMessage.js
+│   │   └── AnalyticsDashboard.js
+│   ├── firebase.js         # Firebase config
+│   └── App.js              # Main frontend
+│
+├── public/
+│   └── index.html
+│
+└── package.json

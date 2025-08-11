@@ -1,0 +1,119 @@
+Terms of Service
+Overview
+Welcome to the Convoy AI Terms of Service agreement. The terms “Convoy AI”, “the Company,” “we,” “us,” and “our” refer to our Company. “You” or “your” refer to your Company.
+
+The following Terms of Service apply when you sign this agreement. The signer must be the business owner or an authorized person within your company that is able to enter into this agreement. These Terms of Service will also apply to any other persons in your Company that communicate with us.
+
+Please review the following terms carefully. By signing, you signify your agreement to these Terms of Service. If you do not agree to be bound to these Terms of Service in their entirety, you are not eligible for services provided by Convoy AI. Below you will find the services rendered for individual services provided by Convoy AI respectively. These are all different services, in no way shape or form does this indicate that all services will be provided in any agreement.
+
+Acceptance of Terms
+By accessing, browsing, or using our services, you acknowledge that you have read, understood, and agree to be legally bound by these Terms of Service ("Terms") and our Privacy Policy. These Terms govern your access to and use of our services, including any content, functionality, and services offered on or through our services, whether as a guest or a registered user.
+
+The Terms of Service are subject to change without notice.
+
+All calls and voicemails between us and you are monitored and recorded for quality assurance and training purposes.
+
+Text and email messages are logged and monitored for quality assurance and training purposes.
+
+All correspondence sent by you through the post office must be sent as “delivery receipt requested”. Please store your delivered receipts for your records. Please maintain all fax delivery confirmation requests.
+
+Privacy Policy
+The Company respects the privacy of its clients. Please refer to the Company's Privacy Policy, which explains how we collect, use, and disclose information that pertains to your privacy. By signing this agreement, you signify your agreement to the Privacy Policy as well as these Terms of Service. The services described below will only apply to said services the client has agreed to purchase.
+
+Permissions Granted in Connection with Services
+In order to perform the Services, the Client gives Convoy AI the right to use previous content, content given in forms, social media content, copy, scripts, and other content provided by the Client.
+
+Additional Terms Related to Services
+Convoy AI will provide services running Conversational AI for said client. There is no guarantee of results or scalability. Client is responsible to launch, manage, and run their website and business backend effectively.
+
+Convoy AI will provide a refund to Med Supply US LLC for the services if it is not capable of being integrated into their system. Client also accepts that once the initial process is started with onboarding forms and strategy call, the offer, project scope, or business model/product may not be changed. If the Client wishes to change their project scope, a second full payment will be required where activation fees are present.
+
+Convoy AI will also provide client support and reports as needed. The Client is solely responsible for any advice they decide to action and any given outcome. Convoy AI is not liable if the client takes action that results in a decline in business revenue, legal liability, or any other actions that may result in a negative impact on the Client’s business.
+
+ALTHOUGH THE GOAL IS TO PROVIDE CONSULTING AND MANAGEMENT SERVICES THAT CAN PROVIDE AN OVERALL POSITIVE EXPERIENCE AND ROI, THIS IS BY NO WAY GUARANTEED AND DEPENDS ON A NUMBER OF FACTORS. CONVOY AI IS NOT LIABLE IF A POSITIVE RETURN IS NOT MET OR NO REVENUE IS PRODUCED FROM THIS MANAGEMENT SERVICE, AND CLIENT UNDERSTANDS THE RISK.
+
+Account Setup
+To access certain features of our services, you must create an account providing accurate and complete information. You are responsible for maintaining the confidentiality of your account and password.
+
+Account Responsibilities
+You agree to accept responsibility for all activities that occur under your account or password. You should notify us immediately of any unauthorized use of your account or any other breach of security.
+
+Prohibited Acts
+You agree not to engage in any of the following prohibited activities: [list of prohibited activities, e.g., copying or distributing any part of the service in any medium without authorization].
+
+Compliance with Laws
+You will use our services only for lawful purposes and in accordance with these Terms.
+
+Development of Scripting Copy
+Convoy AI, working in conjunction with the Client, may at times help develop the prompt engineering and scripting and other content to be utilized in the Client's business. It is the Client's responsibility to review all facts, representations, and any legal claims in such statements and website and Content for accuracy. Client is required to check the contents being published by Convoy AI at least once per week. Client is ultimately responsible for any claims in copy, even if written by Convoy AI, that may breach local, state, or federal laws. Client is also responsible for any copyright infringement with other companies. While the Content will be developed in conjunction with the Client, the Client will be solely liable for such Website and Content, including all legal claims and other product/service efficacy claims made therein, and all legal aspects of the use of such copy. IN NO EVENT WILL CONVOY AI HAVE ANY LIABILITY FOR THE USE, DISTRIBUTION, AND/OR DISSEMINATION OF ANY SUCH CONTENT.
+
+Third-Party Software and Content Licenses
+Client shall be solely responsible for the maintenance of all software and other third-party content licenses. To the extent that a new license or additional licenses are required for Convoy AI to provide the Services, Convoy AI will notify the Client in advance of all new or additional licenses and will facilitate the purchase of said licenses where applicable. In no event will Convoy AI provide any Services with respect to which Client cannot demonstrate that it has obtained a license broad enough to allow such Services.
+
+Fees and Expenses
+Convoy AI shall perform the Services for “Conversational AI” and contents are to be paid in advance upon signing the contract. Your monthly retainer is on autobill. The Minimum bucket/package tier will be charged regardless of use.
+
+Enterprise Offering
+One Time Activation
+
+$500/mo Management starts 60 days post sign-up for Voice AI Support + AI Text
+
+Minute Costs for Voice AI over set minutes
+
+2000 minutes per month included
+
+$0.20/min of active talk time (over 2000 minutes)
+
+PAYGO Offering
+Free Trial
+
+$30/mo + $0.25/min of active talk time
+
+Payment Terms
+Convoy AI shall require listed payment in advance. Any remaining payments must be paid prior to the completion of your project. Any future work incurred will be due within seven (7) days following the invoice, and outstanding payments will cause the instant shutdown of all 3rd-party systems and all funnels/automations/implementations if applicable until all outstanding payments are settled. Convoy AI is not responsible for loss of revenue or opportunity if the funnels are closed down due to outstanding payments.
+
+Billing and Chargeback Policy for Metered Usage
+Billing Methodology: Our Voice AI services are billed based on metered usage, reflecting the actual volume of interactions processed by our system.
+
+Handling of Billing Discrepancies: If you believe your account has been overcharged, contact our customer support immediately.
+
+Policy on Chargebacks: Filing a chargeback should be a last resort. If a chargeback is filed, we reserve the right to pause all active campaigns until resolution.
+
+Intellectual Property
+Client Proprietary Intellectual Property: Convoy AI acknowledges that Client retains sole ownership of all proprietary content.
+
+Ownership of Deliverables: Upon full payment, deliverables become the property of the Client.
+
+Right to Remove Campaigns: Convoy AI reserves the right to remove campaigns if payments are outstanding.
+
+Confidentiality
+Both parties agree to maintain confidentiality of proprietary information.
+
+Warranty and Warranty Disclaimers
+Convoy AI provides services consistent with industry standards but makes no guarantees of results.
+
+No refunds will be given unless all conditions of the conditional money-back guarantee are met.
+
+Limitations of Liability
+Convoy AI is not liable for indirect, consequential, or punitive damages.
+
+Liability is capped at the total fees paid by the Client in the past 12 months.
+
+Indemnification
+Both parties agree to indemnify each other against intellectual property claims.
+
+Client is responsible for any legal claims arising from their use of services.
+
+Governing Law and Jurisdiction
+This Agreement is governed by the laws of the State of Florida. Disputes will be resolved in Miami, FL.
+
+Miscellaneous
+Independent contractor relationship.
+
+Convoy AI may use Client’s name/logos in marketing unless otherwise stated.
+
+No assignment without prior written consent.
+
+Acceptance
+By using our services, you agree to these Terms. If you do not agree, discontinue use immediately.
+
