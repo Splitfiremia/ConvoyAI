@@ -206,14 +206,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Conversation endpoint
   app.post("/api/ai/conversation", async (req, res) => {
     try {
-      const { message, context } = req.body;
+      const schemaBody = z.object({
+        message: z.string().min(1),
+        context: z.object({
+          customerName: z.string().optional(),
+          phoneNumber: z.string().min(5),
+          purpose: z.string().optional(),
+          conversationHistory: z.array(z.string()).default([]),
+          callId: z.string().optional(),
+        }).optional(),
+        options: z.object({
+          autoCreateAppointment: z.boolean().default(true),
+          autoTransfer: z.boolean().default(true),
+          defaultService: z.string().default("Consultation"),
+          defaultAppointmentOffsetMins: z.number().int().min(5).max(7 * 24 * 60).default(60),
+          transferToAgentId: z.string().optional(),
+        }).optional(),
+      });
+      const { message, context, options } = schemaBody.parse(req.body);
 
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
       }
 
-      const aiResponse = await handleAIConversation(message, context || {});
-      res.json(aiResponse);
+      const aiResponse = await handleAIConversation(message, context || { phoneNumber: "" as any, conversationHistory: [] });
+
+      const results: any = { ai: aiResponse };
+
+      // Auto actions based on AI intent
+      const opts = {
+        autoCreateAppointment: options?.autoCreateAppointment ?? true,
+        autoTransfer: options?.autoTransfer ?? true,
+        defaultService: options?.defaultService ?? "Consultation",
+        defaultAppointmentOffsetMins: options?.defaultAppointmentOffsetMins ?? 60,
+        transferToAgentId: options?.transferToAgentId,
+      };
+
+      // Create appointment if requested
+      if (aiResponse.appointmentRequested && opts.autoCreateAppointment && context?.phoneNumber) {
+        const date = new Date(Date.now() + opts.defaultAppointmentOffsetMins * 60 * 1000);
+        const appointment = await storage.createAppointment({
+          customerName: context.customerName || "Unknown",
+          phoneNumber: context.phoneNumber,
+          email: null,
+          service: context.purpose || opts.defaultService,
+          date,
+          status: "pending",
+          notes: `Auto-created from AI intent: ${aiResponse.intent}`,
+          createdByCallId: context.callId || null,
+        });
+        results.appointment = appointment;
+      }
+
+      // Transfer call to agent if needed
+      if (aiResponse.shouldTransfer && opts.autoTransfer && context?.callId) {
+        const toAgentId = opts.transferToAgentId;
+        const success = toAgentId ? telephonyService.transferCall(context.callId, toAgentId) : false;
+        if (success) {
+          await storage.updateCall(context.callId, { assignedAgentId: toAgentId || null, isAiHandled: false, status: "active" });
+        }
+        results.transfer = { success, toAgentId: toAgentId || null };
+      }
+
+      res.json(results);
     } catch (error) {
       console.error("Error in AI conversation:", error);
       res.status(500).json({ message: "Internal server error" });
