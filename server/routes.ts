@@ -11,6 +11,26 @@ import { createMobileServiceRouter } from "./services/mobile";
 import brandsRouter from "./routes/brands";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health and readiness endpoints
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  app.get('/api/readiness', async (_req, res) => {
+    // Basic checks: OpenAI key, optional DB
+    const openaiReady = Boolean(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR);
+    const dbReady = Boolean(process.env.DATABASE_URL);
+    const statusCode = openaiReady ? 200 : 503;
+    res.status(statusCode).json({
+      ready: openaiReady,
+      dependencies: { openai: openaiReady, database: dbReady },
+      timestamp: new Date().toISOString(),
+    });
+  });
   // Analytics endpoints
   app.get("/api/analytics/today", async (req, res) => {
     try {
@@ -105,7 +125,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/calls/:id/answer", async (req, res) => {
     try {
       const { id } = req.params;
-      const { agentId } = req.body;
+      const bodySchema = z.object({ agentId: z.string().optional() });
+      const { agentId } = bodySchema.parse(req.body);
 
       const success = telephonyService.answerCall(id, agentId);
       if (!success) {
@@ -139,11 +160,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/calls/:id/transfer", async (req, res) => {
     try {
       const { id } = req.params;
-      const { agentId } = req.body;
-
-      if (!agentId) {
-        return res.status(400).json({ message: "Agent ID is required" });
-      }
+      const bodySchema = z.object({ agentId: z.string().min(1) });
+      const { agentId } = bodySchema.parse(req.body);
 
       const success = telephonyService.transferCall(id, agentId);
       if (!success) {
@@ -230,11 +248,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Outbound call endpoint
   app.post("/api/calls/outbound", async (req, res) => {
     try {
-      const { phoneNumber, agentId } = req.body;
-
-      if (!phoneNumber || !agentId) {
-        return res.status(400).json({ message: "Phone number and agent ID are required" });
-      }
+      const bodySchema = z.object({
+        phoneNumber: z.string().min(5),
+        agentId: z.string().min(1),
+      });
+      const { phoneNumber, agentId } = bodySchema.parse(req.body);
 
       const callId = telephonyService.makeOutboundCall(phoneNumber, agentId);
       
@@ -251,6 +269,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ callId, message: "Outbound call initiated" });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
       console.error("Error making outbound call:", error);
       res.status(500).json({ message: "Internal server error" });
     }
@@ -333,8 +354,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mobile AI Service - Completely isolated  
   app.use('/services/mobile', createMobileServiceRouter());
   
-  // White Label Management - Brand customization
-  app.use('/api/brands', brandsRouter);
+  // White Label Management - Brand customization (require DATABASE_URL)
+  if (process.env.DATABASE_URL) {
+    app.use('/api/brands', brandsRouter);
+  }
 
   return httpServer;
 }

@@ -40,11 +40,16 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const status = Number(err.status || err.statusCode || 500);
+    const message = typeof err.message === 'string' ? err.message : 'Internal Server Error';
 
-    res.status(status).json({ message });
-    throw err;
+    // Avoid leaking internals; log minimal safe metadata
+    log(`${_req.method} ${_req.path} -> ${status} ${message}`);
+    if (app.get('env') !== 'production') {
+      // Attach limited debug info in non-production
+      return res.status(status).json({ message, error: { name: err.name, stack: err.stack } });
+    }
+    return res.status(status).json({ message });
   });
 
   // importantly only setup vite in development and after
