@@ -1,4 +1,7 @@
 import { type User, type InsertUser, type Call, type InsertCall, type Appointment, type InsertAppointment, type Analytics, type InsertAnalytics } from "@shared/schema";
+import * as schema from "@shared/schema";
+import { and, eq, gt, gte, lt } from "drizzle-orm";
+type DrizzleDb = typeof import("./db").db;
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -275,4 +278,177 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+class DbStorage implements IStorage {
+  private async getDb(): Promise<DrizzleDb> {
+    const mod = await import("./db");
+    return mod.db as DrizzleDb;
+  }
+
+  // User operations
+  async getUser(id: string): Promise<User | undefined> {
+    const db = await this.getDb();
+    const [row] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+    return row as unknown as User | undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const db = await this.getDb();
+    const [row] = await db.select().from(schema.users).where(eq(schema.users.username, username));
+    return row as unknown as User | undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const db = await this.getDb();
+    const [row] = await db.insert(schema.users).values({
+      username: insertUser.username,
+      password: insertUser.password,
+      name: insertUser.name,
+      role: insertUser.role || "agent",
+      avatar: insertUser.avatar || null,
+      status: insertUser.status || "available",
+      brandId: insertUser.brandId || null,
+    }).returning();
+    return row as unknown as User;
+  }
+
+  async updateUserStatus(id: string, status: string): Promise<boolean> {
+    const db = await this.getDb();
+    const res = await db.update(schema.users).set({ status }).where(eq(schema.users.id, id));
+    // drizzle returns {rowCount} in some drivers; fallback to truthy
+    // @ts-ignore
+    return Boolean(res.rowCount ?? 1);
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.users);
+    return rows as unknown as User[];
+  }
+
+  // Call operations
+  async createCall(insertCall: InsertCall): Promise<Call> {
+    const db = await this.getDb();
+    const [row] = await db.insert(schema.calls).values({
+      customerName: insertCall.customerName,
+      phoneNumber: insertCall.phoneNumber,
+      purpose: insertCall.purpose || "Unknown",
+      status: insertCall.status || "queued",
+      assignedAgentId: insertCall.assignedAgentId || null,
+      startTime: insertCall.startTime || null,
+      endTime: insertCall.endTime || null,
+      duration: insertCall.duration || null,
+      transcription: insertCall.transcription || null,
+      sentiment: insertCall.sentiment || null,
+      isAiHandled: insertCall.isAiHandled !== undefined ? insertCall.isAiHandled : true,
+    }).returning();
+    return row as unknown as Call;
+  }
+
+  async getCall(id: string): Promise<Call | undefined> {
+    const db = await this.getDb();
+    const [row] = await db.select().from(schema.calls).where(eq(schema.calls.id, id));
+    return row as unknown as Call | undefined;
+  }
+
+  async updateCall(id: string, updates: Partial<Call>): Promise<boolean> {
+    const db = await this.getDb();
+    const res = await db.update(schema.calls).set(updates as any).where(eq(schema.calls.id, id));
+    // @ts-ignore
+    return Boolean(res.rowCount ?? 1);
+  }
+
+  async getActiveCalls(): Promise<Call[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.calls).where(eq(schema.calls.status, "active"));
+    return rows as unknown as Call[];
+  }
+
+  async getCallsByStatus(status: string): Promise<Call[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.calls).where(eq(schema.calls.status, status));
+    return rows as unknown as Call[];
+  }
+
+  async getAllCalls(): Promise<Call[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.calls);
+    return rows as unknown as Call[];
+  }
+
+  // Appointment operations
+  async createAppointment(insertAppointment: InsertAppointment): Promise<Appointment> {
+    const db = await this.getDb();
+    const [row] = await db.insert(schema.appointments).values({
+      customerName: insertAppointment.customerName,
+      phoneNumber: insertAppointment.phoneNumber || null,
+      email: insertAppointment.email || null,
+      service: insertAppointment.service,
+      date: insertAppointment.date,
+      status: insertAppointment.status || "scheduled",
+      notes: insertAppointment.notes || null,
+      createdByCallId: insertAppointment.createdByCallId || null,
+    }).returning();
+    return row as unknown as Appointment;
+  }
+
+  async getAppointment(id: string): Promise<Appointment | undefined> {
+    const db = await this.getDb();
+    const [row] = await db.select().from(schema.appointments).where(eq(schema.appointments.id, id));
+    return row as unknown as Appointment | undefined;
+  }
+
+  async updateAppointment(id: string, updates: Partial<Appointment>): Promise<boolean> {
+    const db = await this.getDb();
+    const res = await db.update(schema.appointments).set(updates as any).where(eq(schema.appointments.id, id));
+    // @ts-ignore
+    return Boolean(res.rowCount ?? 1);
+  }
+
+  async getUpcomingAppointments(): Promise<Appointment[]> {
+    const db = await this.getDb();
+    const now = new Date();
+    const rows = await db.select().from(schema.appointments).where(gt(schema.appointments.date, now)).orderBy(schema.appointments.date);
+    return rows as unknown as Appointment[];
+  }
+
+  async getAppointmentsByDate(date: Date): Promise<Appointment[]> {
+    const db = await this.getDb();
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const rows = await db.select().from(schema.appointments).where(and(gte(schema.appointments.date, start), lt(schema.appointments.date, end)));
+    return rows as unknown as Appointment[];
+  }
+
+  // Analytics operations
+  async createAnalyticsEntry(insertAnalytics: InsertAnalytics): Promise<Analytics> {
+    const db = await this.getDb();
+    const [row] = await db.insert(schema.analytics).values({
+      date: insertAnalytics.date || new Date(),
+      totalCalls: insertAnalytics.totalCalls || 0,
+      answeredCalls: insertAnalytics.answeredCalls || 0,
+      avgResponseTime: insertAnalytics.avgResponseTime || 0,
+      customerSatisfaction: insertAnalytics.customerSatisfaction || 0,
+      aiHandledCalls: insertAnalytics.aiHandledCalls || 0,
+      transferredCalls: insertAnalytics.transferredCalls || 0,
+    }).returning();
+    return row as unknown as Analytics;
+  }
+
+  async getAnalyticsByDate(date: Date): Promise<Analytics | undefined> {
+    const db = await this.getDb();
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const [row] = await db.select().from(schema.analytics).where(and(gte(schema.analytics.date, start), lt(schema.analytics.date, end)));
+    return row as unknown as Analytics | undefined;
+  }
+
+  async getTodayAnalytics(): Promise<Analytics | undefined> {
+    return this.getAnalyticsByDate(new Date());
+  }
+}
+
+export const storage: IStorage = process.env.DATABASE_URL ? new DbStorage() : new MemStorage();

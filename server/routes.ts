@@ -11,6 +11,48 @@ import { createMobileServiceRouter } from "./services/mobile";
 import brandsRouter from "./routes/brands";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth login (username/password -> JWT)
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const body = z.object({ username: z.string(), password: z.string() }).parse(req.body);
+      // Lookup user; for demo use storage.getUserByUsername, then compare plain password
+      const users = await storage.getAllUsers();
+      const user = users.find(u => u.username === body.username);
+      if (!user || user.password !== body.password) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+      // Import signJwt dynamically to avoid cyclic issues
+      const { signJwt } = await import('./auth');
+      const token = signJwt({ sub: user.id, username: user.username, role: user.role || 'agent' }, { expiresInSec: 60 * 60 });
+      return res.json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role } });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Validation error', errors: error.errors });
+      }
+      console.error('Login error:', error);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+  // Health and readiness endpoints
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  app.get('/api/readiness', async (_req, res) => {
+    // Basic checks: OpenAI key, optional DB
+    const openaiReady = Boolean(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR);
+    const dbReady = Boolean(process.env.DATABASE_URL);
+    const statusCode = openaiReady ? 200 : 503;
+    res.status(statusCode).json({
+      ready: openaiReady,
+      dependencies: { openai: openaiReady, database: dbReady },
+      timestamp: new Date().toISOString(),
+    });
+  });
   // Analytics endpoints
   app.get("/api/analytics/today", async (req, res) => {
     try {
@@ -105,7 +147,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/calls/:id/answer", async (req, res) => {
     try {
       const { id } = req.params;
-      const { agentId } = req.body;
+      const bodySchema = z.object({ agentId: z.string().optional() });
+      const { agentId } = bodySchema.parse(req.body);
 
       const success = telephonyService.answerCall(id, agentId);
       if (!success) {
@@ -139,11 +182,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/calls/:id/transfer", async (req, res) => {
     try {
       const { id } = req.params;
-      const { agentId } = req.body;
-
-      if (!agentId) {
-        return res.status(400).json({ message: "Agent ID is required" });
-      }
+      const bodySchema = z.object({ agentId: z.string().min(1) });
+      const { agentId } = bodySchema.parse(req.body);
 
       const success = telephonyService.transferCall(id, agentId);
       if (!success) {
@@ -188,14 +228,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Conversation endpoint
   app.post("/api/ai/conversation", async (req, res) => {
     try {
-      const { message, context } = req.body;
+      const schemaBody = z.object({
+        message: z.string().min(1),
+        context: z.object({
+          customerName: z.string().optional(),
+          phoneNumber: z.string().min(5),
+          purpose: z.string().optional(),
+          conversationHistory: z.array(z.string()).default([]),
+          callId: z.string().optional(),
+        }).optional(),
+        options: z.object({
+          autoCreateAppointment: z.boolean().default(true),
+          autoTransfer: z.boolean().default(true),
+          defaultService: z.string().default("Consultation"),
+          defaultAppointmentOffsetMins: z.number().int().min(5).max(7 * 24 * 60).default(60),
+          transferToAgentId: z.string().optional(),
+        }).optional(),
+      });
+      const { message, context, options } = schemaBody.parse(req.body);
 
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
       }
 
-      const aiResponse = await handleAIConversation(message, context || {});
-      res.json(aiResponse);
+      const aiResponse = await handleAIConversation(message, context || { phoneNumber: "" as any, conversationHistory: [] });
+
+      const results: any = { ai: aiResponse };
+
+      // Auto actions based on AI intent
+      const opts = {
+        autoCreateAppointment: options?.autoCreateAppointment ?? true,
+        autoTransfer: options?.autoTransfer ?? true,
+        defaultService: options?.defaultService ?? "Consultation",
+        defaultAppointmentOffsetMins: options?.defaultAppointmentOffsetMins ?? 60,
+        transferToAgentId: options?.transferToAgentId,
+      };
+
+      // Create appointment if requested
+      if (aiResponse.appointmentRequested && opts.autoCreateAppointment && context?.phoneNumber) {
+        const date = new Date(Date.now() + opts.defaultAppointmentOffsetMins * 60 * 1000);
+        const appointment = await storage.createAppointment({
+          customerName: context.customerName || "Unknown",
+          phoneNumber: context.phoneNumber,
+          email: null,
+          service: context.purpose || opts.defaultService,
+          date,
+          status: "pending",
+          notes: `Auto-created from AI intent: ${aiResponse.intent}`,
+          createdByCallId: context.callId || null,
+        });
+        results.appointment = appointment;
+      }
+
+      // Transfer call to agent if needed
+      if (aiResponse.shouldTransfer && opts.autoTransfer && context?.callId) {
+        const toAgentId = opts.transferToAgentId;
+        const success = toAgentId ? telephonyService.transferCall(context.callId, toAgentId) : false;
+        if (success) {
+          await storage.updateCall(context.callId, { assignedAgentId: toAgentId || null, isAiHandled: false, status: "active" });
+        }
+        results.transfer = { success, toAgentId: toAgentId || null };
+      }
+
+      res.json(results);
     } catch (error) {
       console.error("Error in AI conversation:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -230,11 +325,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Outbound call endpoint
   app.post("/api/calls/outbound", async (req, res) => {
     try {
-      const { phoneNumber, agentId } = req.body;
-
-      if (!phoneNumber || !agentId) {
-        return res.status(400).json({ message: "Phone number and agent ID are required" });
-      }
+      const bodySchema = z.object({
+        phoneNumber: z.string().min(5),
+        agentId: z.string().min(1),
+      });
+      const { phoneNumber, agentId } = bodySchema.parse(req.body);
 
       const callId = telephonyService.makeOutboundCall(phoneNumber, agentId);
       
@@ -251,6 +346,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ callId, message: "Outbound call initiated" });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
       console.error("Error making outbound call:", error);
       res.status(500).json({ message: "Internal server error" });
     }
@@ -333,8 +431,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mobile AI Service - Completely isolated  
   app.use('/services/mobile', createMobileServiceRouter());
   
-  // White Label Management - Brand customization
-  app.use('/api/brands', brandsRouter);
+  // White Label Management - Brand customization (require DATABASE_URL)
+  if (process.env.DATABASE_URL) {
+    app.use('/api/brands', brandsRouter);
+  }
 
   return httpServer;
 }
