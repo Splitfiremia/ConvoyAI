@@ -11,6 +11,28 @@ import { createMobileServiceRouter } from "./services/mobile";
 import brandsRouter from "./routes/brands";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth login (username/password -> JWT)
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const body = z.object({ username: z.string(), password: z.string() }).parse(req.body);
+      // Lookup user; for demo use storage.getUserByUsername, then compare plain password
+      const users = await storage.getAllUsers();
+      const user = users.find(u => u.username === body.username);
+      if (!user || user.password !== body.password) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+      // Import signJwt dynamically to avoid cyclic issues
+      const { signJwt } = await import('./auth');
+      const token = signJwt({ sub: user.id, username: user.username, role: user.role || 'agent' }, { expiresInSec: 60 * 60 });
+      return res.json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role } });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Validation error', errors: error.errors });
+      }
+      console.error('Login error:', error);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  });
   // Health and readiness endpoints
   app.get('/api/health', (_req, res) => {
     res.json({

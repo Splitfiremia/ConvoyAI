@@ -4,6 +4,7 @@ import { recordRequest } from "./metrics";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { getPrometheusMetrics } from "./metrics";
+import { verifyJwt } from "./auth";
 
 const app = express();
 app.use(express.json());
@@ -79,22 +80,36 @@ app.use((req, res, next) => {
 	next();
 });
 
-// API Key Auth middleware for /api (skip health/readiness/metrics)
+// Auth middleware for /api (skip health/readiness/metrics): allow JWT OR API key
 app.use((req, res, next) => {
 	if (!req.path.startsWith("/api")) return next();
 	if (req.path === "/api/health" || req.path === "/api/readiness" || req.path === "/api/metrics") return next();
+
+	const authz = req.header("authorization") || "";
+	const bearer = authz.replace(/^Bearer\s+/i, "").trim();
+	const xApiKey = (req.header("x-api-key") || "").trim();
 	const configuredKey = process.env.API_KEY?.trim();
-	if (!configuredKey) return next(); // If not set, auth is disabled
-	const provided = (req.header("x-api-key") || req.header("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-	if (!provided) return res.status(401).json({ message: "Missing API key" });
-	const providedBuf = Buffer.from(provided);
-	const configuredBuf = Buffer.from(configuredKey);
-	if (providedBuf.length !== configuredBuf.length) {
-		return res.status(403).json({ message: "Invalid API key" });
+
+	// Try JWT first
+	const jwtPayload = bearer ? verifyJwt(bearer) : null;
+	if (jwtPayload) {
+		(req as any).user = jwtPayload;
+		return next();
 	}
-	const ok = crypto.timingSafeEqual(providedBuf, configuredBuf);
-	if (!ok) return res.status(403).json({ message: "Invalid API key" });
-	next();
+
+	// Fallback to API key
+	if (configuredKey) {
+		const providedBuf = Buffer.from(xApiKey || bearer);
+		const configuredBuf = Buffer.from(configuredKey);
+		if (providedBuf.length !== configuredBuf.length) {
+			return res.status(403).json({ message: "Invalid API key" });
+		}
+		const ok = crypto.timingSafeEqual(providedBuf, configuredBuf);
+		if (!ok) return res.status(403).json({ message: "Invalid API key" });
+		return next();
+	}
+
+	return res.status(401).json({ message: "Unauthorized" });
 });
 
 (async () => {
